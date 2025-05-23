@@ -92,7 +92,7 @@ function checkout() {
     return;
   }
 
-  fetch("http://localhost:5000/api/checkout", {
+  fetch("https://ds-grok.onrender.com/api/checkout", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
