@@ -1,0 +1,234 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnappyStore</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-['Inter']">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md p-4 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">SnappyStore</h1>
+            <div class="flex items-center space-x-4">
+                <a href="index.html" class="text-gray-600 hover:text-blue-600 hover:underline">Home</a>
+                <a href="login.html" class="text-gray-600 hover:text-blue-600 hover:underline">Login</a>
+                <a href="signup.html" class="text-gray-600 hover:text-blue-600 hover:underline">Signup</a>
+                <a href="order-history.html" class="text-gray-600 hover:text-blue-600 hover:underline">Orders</a>
+                <div class="relative">
+                    <button id="cart-toggle" class="text-gray-600 hover:text-gray-800">
+                        🛒 <span id="cart-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-20">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Your Cart</h2>
+                <button id="close-cart" class="text-gray-600 hover:text-gray-800">×</button>
+            </div>
+            <div id="cart-items" class="space-y-4"></div>
+            <div class="mt-4">
+                <p class="text-lg font-semibold">Total: ₹<span id="cart-total">0</span></p>
+            </div>
+            <div class="mt-6 flex justify-between">
+                <button id="continue-shopping" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 hover:scale-105 transition-transform">Continue Shopping</button>
+                <button id="checkout" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 hover:scale-105 transition-transform">Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-16">
+        <div class="max-w-7xl mx-auto text-center">
+            <h2 class="text-4xl font-bold mb-4">Upgrade Your Everyday 🔥</h2>
+            <p class="text-lg">Modern tools & gadgets that simplify life, curated for your home.</p>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="max-w-7xl mx-auto py-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Product 1 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/Cable_organiser.webp" alt="Cable Organizer" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">Cable Organizer</h3>
+                <p class="text-gray-600">Neatly wrap your chaos</p>
+                <p class="text-xl font-bold mt-2">₹199</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="Cable Organizer" data-price="199">Add to Cart</button>
+            </div>
+            <!-- Product 2 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/oil.webp" alt="Oil Spray Bottle" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">Oil Spray Bottle</h3>
+                <p class="text-gray-600">Cook smart, stay fit</p>
+                <p class="text-xl font-bold mt-2">₹299</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="Oil Spray Bottle" data-price="299">Add to Cart</button>
+            </div>
+            <!-- Product 3 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/blender.webp" alt="Portable Blender" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">Portable Blender</h3>
+                <p class="text-gray-600">Smoothies on the go</p>
+                <p class="text-xl font-bold mt-2">₹999</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="Portable Blender" data-price="999">Add to Cart</button>
+            </div>
+            <!-- Product 4 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/Led_strip.webp" alt="LED Strip Lights" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">LED Strip Lights</h3>
+                <p class="text-gray-600">Glow up your space</p>
+                <p class="text-xl font-bold mt-2">₹349</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="LED Strip Lights" data-price="349">Add to Cart</button>
+            </div>
+            <!-- Product 5 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/eggy.webp" alt="USB Egg Cooker" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">USB Egg Cooker</h3>
+                <p class="text-gray-600">Healthy eggs, plug & go</p>
+                <p class="text-xl font-bold mt-2">₹699</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="USB Egg Cooker" data-price="699">Add to Cart</button>
+            </div>
+            <!-- Product 6 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/spray.webp" alt="Non-Stick Cooking Spray" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">Non-Stick Cooking Spray</h3>
+                <p class="text-gray-600">Next-gen surface protection</p>
+                <p class="text-xl font-bold mt-2">₹899</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="Non-Stick Cooking Spray" data-price="899">Add to Cart</button>
+            </div>
+            <!-- Product 7 -->
+            <div class="bg-white rounded-lg shadow-md p-4 hover:scale-105 hover:shadow-lg transition-transform duration-200">
+                <img src="Images/slicer.webp" alt="Veggie Slicer" class="h-52 w-full object-contain rounded-md mb-4 bg-gray-100">
+                <h3 class="text-lg font-semibold">Veggie Slicer</h3>
+                <p class="text-gray-600">Quick & even chopping</p>
+                <p class="text-xl font-bold mt-2">₹349</p>
+                <button class="add-to-cart w-full bg-blue-600 text-white py-2 mt-4 rounded hover:bg-blue-700 hover:scale-105 transition-transform" data-name="Veggie Slicer" data-price="349">Add to Cart</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Cart Logic
+        let cart = [];
+
+        // Update cart UI
+        function updateCart() {
+            const cartItems = document.getElementById('cart-items');
+            const cartCount = document.getElementById('cart-count');
+            const cartTotal = document.getElementById('cart-total');
+            cartItems.innerHTML = '';
+
+            let total = 0;
+            cart.forEach((item, index) => {
+                total += item.price * item.quantity;
+                const cartItem = document.createElement('div');
+                cartItem.className = 'flex justify-between items-center border-b py-2';
+                cartItem.innerHTML = `
+                    <div>
+                        <p class="font-semibold">${item.name}</p>
+                        <p class="text-gray-600">₹${item.price} x ${item.quantity}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="decrease-quantity text-gray-600 hover:text-gray-800" data-index="${index}">-</button>
+                        <p>${item.quantity}</p>
+                        <button class="increase-quantity text-gray-600 hover:text-gray-800" data-index="${index}">+</button>
+                        <button class="remove-item text-red-600 hover:text-red-800" data-index="${index}">Remove</button>
+                    </div>
+                `;
+                cartItems.appendChild(cartItem);
+            });
+
+            cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartTotal.textContent = total;
+        }
+
+        // Add to cart
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', () => {
+                const name = button.dataset.name;
+                const price = parseInt(button.dataset.price);
+                const existingItem = cart.find(item => item.name === name);
+
+                if (existingItem) {
+                    existingItem.quantity++;
+                } else {
+                    cart.push({ name, price, quantity: 1 });
+                }
+
+                updateCart();
+            });
+        });
+
+        // Cart modal toggle
+        const cartModal = document.getElementById('cart-modal');
+        document.getElementById('cart-toggle').addEventListener('click', () => {
+            cartModal.classList.toggle('hidden');
+        });
+        document.getElementById('close-cart').addEventListener('click', () => {
+            cartModal.classList.add('hidden');
+        });
+        document.getElementById('continue-shopping').addEventListener('click', () => {
+            cartModal.classList.add('hidden');
+        });
+
+        // Cart item quantity and removal
+        document.getElementById('cart-items').addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            if (e.target.classList.contains('decrease-quantity') && cart[index].quantity > 1) {
+                cart[index].quantity--;
+            } else if (e.target.classList.contains('increase-quantity')) {
+                cart[index].quantity++;
+            } else if (e.target.classList.contains('remove-item')) {
+                cart.splice(index, 1);
+            }
+            updateCart();
+        });
+    </script>
+</body>
+</html>

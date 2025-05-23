@@ -1,0 +1,145 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order History - SnappyStore</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="font-sans bg-gray-100">
+  <!-- Navigation -->
+  <nav class="bg-white shadow-md p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-800">SnappyStore</h1>
+      <div class="flex space-x-6 items-center">
+        <a href="index.html" class="text-gray-600 hover:text-gray-800">Home</a>
+        <a href="login.html" id="auth-link" class="text-gray-600 hover:text-gray-800">Login</a>
+        <a href="signup.html" class="text-gray-600 hover:text-gray-800">Signup</a>
+        <a href="order-history.html" class="text-gray-600 hover:text-gray-800">Orders</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Order History -->
+  <section class="container mx-auto py-12">
+    <h2 class="text-3xl font-bold mb-6">Order History</h2>
+    <div id="order-list" class="space-y-6">
+      <!-- Orders will be dynamically inserted here -->
+    </div>
+  </section>
+
+  <script>
+    function updateAuthLink() {
+      const authLink = document.getElementById("auth-link");
+      const token = localStorage.getItem("token");
+      if (token) {
+        authLink.textContent = "Logout";
+        authLink.href = "#";
+        authLink.onclick = (e) => {
+          e.preventDefault();
+          localStorage.removeItem("token");
+          updateAuthLink();
+          alert("Logged out successfully!");
+          window.location.href = "login.html";
+        };
+      } else {
+        authLink.textContent = "Login";
+        authLink.href = "login.html";
+      }
+    }
+
+    async function fetchOrders() {
+      const token = localStorage.getItem("token");
+      const orderList = document.getElementById("order-list");
+
+      if (!token) {
+        orderList.innerHTML = '<p class="text-gray-600">Please <a href="login.html" class="text-blue-500 hover:underline">login</a> to view your orders.</p>';
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:5000/api/orders", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const orders = await res.json();
+
+        if (!res.ok) {
+          throw new Error(orders.message || "Failed to fetch orders");
+        }
+
+        if (orders.length === 0) {
+          orderList.innerHTML = '<p class="text-gray-600">No orders found.</p>';
+          return;
+        }
+
+        orderList.innerHTML = "";
+        orders.forEach(order => {
+          const orderDiv = document.createElement("div");
+          orderDiv.className = "bg-white rounded-lg shadow-md p-6";
+          orderDiv.innerHTML = `
+            <h3 class="text-xl font-semibold mb-2">Order ID: ${order._id}</h3>
+            <p class="text-gray-600 mb-2">Placed on: ${new Date(order.createdAt).toLocaleString()}</p>
+            <p class="text-gray-600 mb-2">Status: ${order.status || 'Pending'}</p>
+            <ul class="list-disc pl-5 mb-4">
+              ${order.items.map(item => `
+                <li>${item.name} - ₹${item.price} x ${item.quantity}</li>
+              `).join('')}
+            </ul>
+            <p class="text-lg font-semibold">Total: ₹${order.total}</p>
+          `;
+          orderList.appendChild(orderDiv);
+        });
+      } catch (err) {
+        console.error("Fetch orders error:", err);
+        orderList.innerHTML = '<p class="text-red-600">Error loading orders. Please try again later.</p>';
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      updateAuthLink();
+      fetchOrders();
+    });
+  </script>
+</body>
+</html>
